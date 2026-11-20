@@ -24,10 +24,10 @@ SESLER = {
 
 # (dosya adı, karakter, başlangıç saniyesi, metin) — başlangıçlar ses.py'de kullanılır
 REPLIKLER = [
-    ("01_kemal", "kemal", 0.6, "Müzedeki ilk gecemdi. Bana bir fener, bir de not bıraktılar."),
+    ("01_kemal", "kemal", 0.6, "Müzedeki ilk gecemdi. Elime bir fener ve bir not verdiler."),
     ("02_riza", "riza", 5.8, "[whispers] Saat üçte heykellere bakma evlat, ne olursa olsun."),
-    ("03_kemal", "kemal", 16.4, "[nervously] Bir kere bakmaktan ne olur ki?"),
-    ("04_kemal", "kemal", 28.2, "[scared whisper] Az önce yüzü duvara dönüktü!"),
+    ("03_kemal", "kemal", 16.4, "Bir kere bakmaktan ne olur ki?"),
+    ("04_kemal", "kemal", 28.2, "Az önce yüzü duvara dönüktü!"),
     ("05_kemal", "kemal", 34.6, "Sen olsan, ışığı söndürür müydün?"),
 ]
 
@@ -39,6 +39,7 @@ def tts(text, voice_id, out):
             "text": text,
             "model_id": MODEL,
             "language_code": "tr",
+            "seed": 1907,  # aynı karakter her replikte aynı tınıda kalsın
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "speed": HIZ},
         }).encode(),
         headers={
