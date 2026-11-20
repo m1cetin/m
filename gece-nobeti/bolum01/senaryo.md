@@ -1,6 +1,6 @@
 # Bölüm 1: İlk Gece
 
-Süre: ~38 sn · 24 fps · 9:16
+Süre: ~40 sn · 24 fps · 9:16
 
 | # | Süre | Kamera | Görüntü | Ekrandaki yazı | Ses |
 |---|---|---|---|---|---|
@@ -10,7 +10,7 @@ Süre: ~38 sn · 24 fps · 9:16
 | 4 | 15–22 sn | Kemal'in omzunun üstünden | Fener ışığı heykellerin sırtlarında geziniyor. Hepsi duvara dönük. | **Baktı.** | Gerilim tonu yükselir |
 | 5 | 22–27 sn | Aynı açı | Işık geri döner: üçüncü heykel artık Kemal'e bakıyor. Kırmızı ışık titrer. | – | Ani vuruş (stinger) |
 | 6 | 27–34 sn | Heykelin yüzüne yavaşça yaklaşma | Yüzsüz heykelin kara oyuk gözleri. Fener söner. | **O DA SANA BAKTI.** | Derin drone, fener tıkırtısı, sessizlik |
-| 7 | 34–38 sn | Siyah son kart | – | **Sen olsan ışığı söndürür müydün?**<br>Bölüm 2: İkinci Kural | Düşük tek nota |
+| 7 | 34–40 sn | Siyah son kart (oylama) | – | **KEMAL ŞİMDİ NE YAPMALI?**<br>A) Işığı söndürsün · B) Koşarak kaçsın · C) Heykele yaklaşsın<br>Yorumlara yaz, 2. bölümü SEN seç! | Düşük tek nota |
 
 ## Seslendirme (ElevenLabs, eleven_v3)
 

@@ -31,7 +31,7 @@ FILTER+="curves=all='0/0 0.08/0.2 0.3/0.55 1/1':enable='between(t,11.0,15.0)',"
 FILTER+="eq=brightness=-0.05:contrast=1.18:saturation=1.1:enable='between(t,27,34)',"
 FILTER+="eq=contrast=1.05:saturation=0.92,vignette=angle=PI/4.2,noise=alls=6:allf=t,"
 FILTER+="fade=t=in:st=0:d=0.7,fade=t=out:st=33.4:d=0.6,"
-FILTER+="tpad=stop_mode=add:stop_duration=4.5:color=black[v0]"
+FILTER+="tpad=stop_mode=add:stop_duration=6.5:color=black[v0]"
 i=1
 prev=v0
 while read -r path a b; do
@@ -53,6 +53,6 @@ ffmpeg -loglevel error -y \
   -filter_complex "$FILTER" \
   -map "[vout]" -map "$i:a" \
   -c:v libx264 -preset slow -crf 20 -maxrate 10M -bufsize 20M -r 24 \
-  -c:a aac -b:a 192k -movflags +faststart -t 38.5 \
+  -c:a aac -b:a 192k -movflags +faststart -t 40.5 \
   "$OUT"
 echo "video hazır: $OUT"

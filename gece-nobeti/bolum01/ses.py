@@ -13,7 +13,7 @@ import numpy as np
 
 SR = 48000
 FPS = 24
-DUR = 38.5
+DUR = 40.5
 rng = np.random.default_rng(11)
 N = int(DUR * SR)
 L = np.zeros(N)

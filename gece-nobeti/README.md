@@ -11,20 +11,19 @@ Her bölüm bir kuralı ve o kural çiğnendiğinde olanları anlatıyor.
   - **Heykeller:** Yüzü olmayan beyaz mermer figürler. Gece bazıları "uyanıyor".
   - **Eski Bekçi (Rıza Usta):** Hiç görünmüyor; sadece notları ve sesi var.
 
-## Bölümler
+## Bölümler: izleyiciler seçiyor
 
-| # | Başlık | Kural / Olay | Son soru (kanca) |
-|---|---|---|---|
-| 1 | İlk Gece | "Saat 03:00'te heykellere bakma." Kemal bakar; bir heykel ona dönmüştür. | Sen olsan ışığı söndürür müydün? |
-| 2 | İkinci Kural | "Bir heykel yer değiştirirse onu sayma." Heykellerin sayısı artıyor. | Kaç tane saydın? |
-| 3 | Telsiz | Telsizden Rıza Usta'nın sesi geliyor ama o kaybolalı bir yıl oldu. | Cevap verir miydin? |
-| 4 | Kırmızı Oda | Kapısı hiç açılmayan bir oda; içeriden vurma sesleri. | Kapıyı açar mıydın? |
-| 5 | Ayak İzleri | Tozlu zeminde çıplak ayak izleri Kemal'in kulübesine çıkıyor. | Kulübeye girer miydin? |
-| 6 | Kamera 7 | Güvenlik kamerasında Kemal kendini görüyor, ama o an orada değil. | Hangisi gerçek Kemal? |
-| 7 | Rıza Usta'nın Defteri | Eski bekçinin defteri bulunuyor; son sayfada Kemal'in adı yazılı. | Okumaya devam eder miydin? |
-| 8 | Boş Kaide | Bir kaide boş. Heykel artık müzenin içinde bir yerde dolaşıyor. | Saklanır mıydın, kaçar mıydın? |
-| 9 | Son Kural | "Sabah ezanı okunana kadar müzeden çıkma." Kapı açık bırakılmış. | Dışarı çıkar mıydın? |
-| 10 | Sabah | Gerçek ortaya çıkıyor: Rıza Usta bir heykele dönüşmüş, Kemal'in sırası geldi mi? | Yarın gece nöbete gelir miydin? |
+Her bölüm bir seçimle biter ("Kemal şimdi ne yapmalı? A / B / C"). Yorumlarda en çok
+oy alan seçenek bir sonraki bölümün hikâyesi olur. Seriyi izleyiciler birlikte yazar.
+
+| # | Başlık | Durum |
+|---|---|---|
+| 1 | İlk Gece | Hazır. Seçenekler: A) Işığı söndürsün · B) Koşarak kaçsın · C) Heykele yaklaşsın |
+| 2 | ? | 1. bölümün yorumlarındaki oylamaya göre |
+
+Fikir havuzu (ileriki bölümlerde kullanılabilir): telsizden gelen kayıp bekçinin sesi, kapısı hiç açılmayan
+kırmızı oda, tozda çıplak ayak izleri, güvenlik kamerasında Kemal'in kendini görmesi, eski bekçinin
+defteri, boş kalan kaide.
 
 ## Klasörler
 

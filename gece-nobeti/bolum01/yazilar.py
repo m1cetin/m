@@ -39,14 +39,17 @@ YAZILAR = [
         ("O DA", BLACK, 64, WHITE, 2),
         ("SANA BAKIYORDU.", BLACK, 92, AMBER, 2),
     ], 0.74),
-    ("06_son", 34.4, 38.5, [
-        ("SEN OLSAN", BLACK, 64, WHITE, 2),
-        ("IŞIĞI", BLACK, 112, AMBER, 2),
-        ("SÖNDÜRÜR", BLACK, 112, AMBER, 2),
-        ("MÜYDÜN?", BLACK, 112, AMBER, 2),
-        ("", BOLD, 40, GREY, 0),
-        ("Bölüm 2: İkinci Kural · Yakında", BOLD, 40, GREY, 2),
-    ], 0.48),
+    ("06_son", 34.4, 40.5, [
+        ("KEMAL ŞİMDİ", BLACK, 64, WHITE, 2),
+        ("NE YAPMALI?", BLACK, 104, AMBER, 2),
+        ("", BOLD, 30, GREY, 0),
+        ("A) Işığı söndürsün", BOLD, 54, WHITE, 0),
+        ("B) Koşarak kaçsın", BOLD, 54, WHITE, 0),
+        ("C) Heykele yaklaşsın", BOLD, 54, WHITE, 0),
+        ("", BOLD, 30, GREY, 0),
+        ("Yorumlara yaz,", BOLD, 46, AMBER, 0),
+        ("2. bölümü SEN seç!", BLACK, 64, AMBER, 2),
+    ], 0.5),
 ]
 
 
