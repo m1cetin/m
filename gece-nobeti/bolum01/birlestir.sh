@@ -26,7 +26,7 @@ done
 INPUTS=()
 FILTER="[0:v]scale=1080:1920:flags=lanczos,unsharp=5:5:0.5,"
 # 3. çekim (saat, 11–15 sn) fazla karanlık: orta tonlar açılır
-FILTER+="eq=gamma=1.7:brightness=0.03:enable='between(t,11.0,15.0)',"
+FILTER+="curves=all='0/0 0.08/0.2 0.3/0.55 1/1':enable='between(t,11.0,15.0)',"
 # 6. çekim (27–34 sn) daha karanlık ve kontrastlı
 FILTER+="eq=brightness=-0.05:contrast=1.18:saturation=1.1:enable='between(t,27,34)',"
 FILTER+="eq=contrast=1.05:saturation=0.92,vignette=angle=PI/4.2,noise=alls=6:allf=t,"
