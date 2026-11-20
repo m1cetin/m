@@ -20,6 +20,6 @@ Konuşma hızı 1.12. `seslendirme.py` üretir, `seslendirme/` klasörüne kayde
 |---|---|---|
 | 0.6 sn | Kemal anlatıyor (Chris) | "Müzedeki ilk gecemdi. Elime bir fener ve bir not verdiler." |
 | 5.8 sn | Rıza Usta (Bill, fısıltı + yankı) | "Saat üçte heykellere bakma evlat, ne olursa olsun." |
-| 16.4 sn | Kemal (Chris) | "Bir kere bakmaktan ne olur ki?" |
-| 28.2 sn | Kemal | "Az önce yüzü duvara dönüktü!" |
+| 16.4 sn | Kemal (gergin) | "Bir kere bakmaktan ne olur ki?" |
+| 28.2 sn | Kemal (korkmuş fısıltı) | "Az önce yüzü duvara dönüktü!" |
 | 34.6 sn | Kemal anlatıyor | "Sen olsan, ışığı söndürür müydün?" |
