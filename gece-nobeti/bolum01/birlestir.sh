@@ -52,7 +52,7 @@ ffmpeg -loglevel error -y \
   -i "$TMP/ses.wav" \
   -filter_complex "$FILTER" \
   -map "[vout]" -map "$i:a" \
-  -c:v libx264 -preset slow -crf 18 -r 24 \
+  -c:v libx264 -preset slow -crf 20 -maxrate 10M -bufsize 20M -r 24 \
   -c:a aac -b:a 192k -movflags +faststart -t 38.5 \
   "$OUT"
 echo "video hazır: $OUT"
