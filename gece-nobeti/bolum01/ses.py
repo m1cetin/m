@@ -252,7 +252,7 @@ def highpass_fft(x, cutoff, slope=2):
 def voices():
     """seslendirme/ klasöründeki ElevenLabs repliklerini karaktere göre işleyip yerleştirir."""
     import seslendirme as sl
-    if not os.path.isdir(sl.KLASOR):
+    if os.environ.get("SESLENDIRME", "1") == "0" or not os.path.isdir(sl.KLASOR):
         return None
     track = np.zeros(N)
     found = False

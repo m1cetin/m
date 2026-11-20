@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Render karelerini, ekran yazılarını ve sesi tek bir dikey MP4'e birleştirir.
 # Kullanım: ./birlestir.sh <kare_klasoru> <cikti.mp4>
+# Seslendirmesiz sürüm için: SESLENDIRME=0 ./birlestir.sh ...
 set -euo pipefail
 KARE=$(realpath "${1:?kare klasörü gerekli}")
 OUT=$(realpath -m "${2:?çıktı dosyası gerekli}")
