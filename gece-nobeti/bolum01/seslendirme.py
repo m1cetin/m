@@ -28,7 +28,7 @@ REPLIKLER = [
     ("02_riza", "riza", 5.8, "[whispers] Saat üçte heykellere bakma evlat, ne olursa olsun."),
     ("03_kemal", "kemal", 16.4, "[nervously] Bir kere bakmaktan ne olur ki?"),
     ("04_kemal", "kemal", 28.2, "[scared whisper] Az önce yüzü duvara dönüktü!"),
-    ("05_kemal", "kemal", 34.6, "Sen olsan, ışığı söndürür müydün?"),
+    ("05_kemal", "kemal", 34.7, "[scared] Şimdi ne yapmalıyım? Yorumlara yaz, sen seç."),
 ]
 
 
