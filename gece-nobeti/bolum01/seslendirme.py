@@ -13,6 +13,7 @@ import sys
 import urllib.request
 
 MODEL = "eleven_v3"
+HIZ = 1.12  # konuşma hızı (1.0 = normal)
 KLASOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seslendirme")
 
 # ElevenLabs hazır sesleri
@@ -24,11 +25,11 @@ SESLER = {
 
 # (dosya adı, karakter, başlangıç saniyesi, metin) — başlangıçlar ses.py'de kullanılır
 REPLIKLER = [
-    ("01_anlatici", "anlatici", 0.6, "[low, calm] Müzedeki ilk gecemdi... Bana bir fener, bir de not bıraktılar."),
-    ("02_riza", "riza", 5.8, "[whispers] Saat üçte... heykellere bakma evlat. Ne olursa olsun."),
-    ("03_kemal", "kemal", 16.4, "[nervously, to himself] Bir kere bakmaktan ne olur ki?"),
-    ("04_kemal", "kemal", 28.2, "[breathless, terrified whisper] Az önce... yüzü duvara dönüktü."),
-    ("05_anlatici", "anlatici", 34.6, "[slowly, ominous] Sen olsan... ışığı söndürür müydün?"),
+    ("01_anlatici", "anlatici", 0.6, "Müzedeki ilk gecemdi. Bana bir fener, bir de not bıraktılar."),
+    ("02_riza", "riza", 5.8, "[whispers] Saat üçte heykellere bakma evlat, ne olursa olsun."),
+    ("03_kemal", "kemal", 16.4, "[nervously] Bir kere bakmaktan ne olur ki?"),
+    ("04_kemal", "kemal", 28.2, "[scared whisper] Az önce yüzü duvara dönüktü!"),
+    ("05_anlatici", "anlatici", 34.6, "Sen olsan, ışığı söndürür müydün?"),
 ]
 
 
@@ -39,7 +40,7 @@ def tts(text, voice_id, out):
             "text": text,
             "model_id": MODEL,
             "language_code": "tr",
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8},
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "speed": HIZ},
         }).encode(),
         headers={
             "xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "proxy-injected"),
