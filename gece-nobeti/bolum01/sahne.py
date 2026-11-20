@@ -21,7 +21,8 @@ S1 = (1, 120)     # koridorda yürüyüş
 S2 = (121, 264)   # Kemal yakın plan
 S3 = (265, 360)   # duvar saati
 S4 = (361, 528)   # fener heykellerde
-S5 = (529, 648)   # heykel dönmüş
+S5 = (529, 588)   # heykel dönmüş
+S5B = (589, 648)  # Kemal'in korkmuş yüzü
 S6 = (649, 816)   # heykelin yüzü
 SON = S6[1]
 
@@ -200,7 +201,210 @@ def look_at(obj, target):
     obj.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
 
 
+def lathe(name, profile, m, segs=96, folds=None, loc=(0, 0, 0), parent=None, levels=1):
+    """Z ekseni etrafında döndürülmüş yüzey. profile: [(z, r)], folds(theta, z) -> dr."""
+    verts, faces = [], []
+    for z, r in profile:
+        for i in range(segs):
+            th = i / segs * math.tau
+            rr = max(0.0, r + (folds(th, z) if folds and r > 0 else 0))
+            verts.append((rr * math.cos(th), rr * math.sin(th), z))
+    rings = len(profile)
+    for j in range(rings - 1):
+        for i in range(segs):
+            a, b = j * segs + i, j * segs + (i + 1) % segs
+            faces.append((a, b, b + segs, a + segs))
+    verts.append((0, 0, profile[0][0]))
+    bc = len(verts) - 1
+    faces += [(bc, (i + 1) % segs, i) for i in range(segs)]
+    verts.append((0, 0, profile[-1][0]))
+    tc = len(verts) - 1
+    base = (rings - 1) * segs
+    faces += [(tc, base + i, base + (i + 1) % segs) for i in range(segs)]
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    me.update()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    o.location = loc
+    smooth(o)
+    assign(o, m)
+    if levels:
+        subsurf(o, levels)
+    if parent:
+        set_parent(o, parent)
+    return o
+
+
+def tube(name, p1, p2, r1, r2, m, parent=None, folds=None):
+    """p1'den p2'ye uzanan, uçları yuvarlatılmış konik boru (kol, kordon vb.)."""
+    p1, p2 = Vector(p1), Vector(p2)
+    d = p2 - p1
+    L = d.length
+    prof = [(-r1 * 0.9, 0.0), (-r1 * 0.6, r1 * 0.8), (0, r1), (L, r2), (L + r2 * 0.6, r2 * 0.8), (L + r2 * 0.9, 0.0)]
+    o = lathe(name, prof, m, segs=32, folds=folds, loc=p1, levels=1)
+    o.rotation_euler = Vector((0, 0, 1)).rotation_difference(d).to_euler()
+    if parent:
+        set_parent(o, parent)
+    return o
+
+
+def frame_ring(name, x, y, z, w, h, bar, depth, m):
+    """Duvara asılı çerçeve halkası (dört çıta)."""
+    xc = x - depth / 2
+    for k, (dy, dz, sy, sz) in enumerate(((0, (h - bar) / 2, w, bar), (0, -(h - bar) / 2, w, bar),
+                                         ((w - bar) / 2, 0, bar, h - 2 * bar), (-(w - bar) / 2, 0, bar, h - 2 * bar))):
+        box(f"{name}_{k}", (xc, y + dy, z + dz), (depth, sy, sz), m, bev=min(0.02, bar / 3))
+
+
 # ----------------------------------------------------------------- malzemeler
+def veined_marble(name, base, vein, scale, vein_w=0.06):
+    """Damarlı mermer: dalga dokusu + bozulma ile ince gri damarlar."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes["Principled BSDF"]
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    wave = nt.nodes.new("ShaderNodeTexWave")
+    wave.wave_profile = "SIN"
+    wave.inputs["Scale"].default_value = scale
+    wave.inputs["Distortion"].default_value = 10
+    wave.inputs["Detail"].default_value = 4
+    wave.inputs["Detail Scale"].default_value = 1.5
+    nt.links.new(tc.outputs["Object"], wave.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    cr = ramp.color_ramp
+    cr.elements[0].position = 0.0
+    cr.elements[0].color = (*vein, 1)
+    cr.elements[1].position = vein_w
+    cr.elements[1].color = (*base, 1)
+    nt.links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
+    # hafif renk dalgalanması
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 3
+    noise.inputs["Detail"].default_value = 3
+    nt.links.new(tc.outputs["Object"], noise.inputs["Vector"])
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.blend_type = "OVERLAY"
+    mix.inputs["Factor"].default_value = 0.25
+    nt.links.new(ramp.outputs["Color"], mix.inputs["A"])
+    nt.links.new(noise.outputs["Color"], mix.inputs["B"])
+    nt.links.new(mix.outputs["Result"], b.inputs["Base Color"])
+    mr = nt.nodes.new("ShaderNodeMapRange")
+    mr.inputs["To Min"].default_value = 0.18
+    mr.inputs["To Max"].default_value = 0.42
+    nt.links.new(noise.outputs["Fac"], mr.inputs["Value"])
+    nt.links.new(mr.outputs["Result"], b.inputs["Roughness"])
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.04
+    nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+def oil_painting():
+    """Karanlık, çatlamış eski yağlı boya tablo."""
+    m = bpy.data.materials.new("yagliboya")
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes["Principled BSDF"]
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 1.8
+    noise.inputs["Detail"].default_value = 6
+    noise.inputs["Distortion"].default_value = 0.8
+    nt.links.new(tc.outputs["Object"], noise.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    cr = ramp.color_ramp
+    cr.elements[0].color = (0.01, 0.012, 0.008, 1)
+    cr.elements[1].color = (0.25, 0.16, 0.06, 1)
+    e = cr.elements.new(0.55)
+    e.color = (0.06, 0.07, 0.04, 1)
+    nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], b.inputs["Base Color"])
+    b.inputs["Roughness"].default_value = 0.35
+    b.inputs["Coat Weight"].default_value = 0.6  # vernik
+    vor = nt.nodes.new("ShaderNodeTexVoronoi")
+    vor.feature = "DISTANCE_TO_EDGE"
+    vor.inputs["Scale"].default_value = 60
+    nt.links.new(tc.outputs["Object"], vor.inputs["Vector"])
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.25
+    bump.inputs["Distance"].default_value = 0.002
+    nt.links.new(vor.outputs["Distance"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+def beam_material():
+    """Fener huzmesi: havadaki tozda görünen ışık konisi (hacim yerine ucuz sahte)."""
+    m = bpy.data.materials.new("huzme")
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (1.0, 0.8, 0.55, 1)
+    add = nt.nodes.new("ShaderNodeAddShader")
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Generated"], sep.inputs["Vector"])
+    # uzunluk boyunca sönme (generated z: 0 fener, 1 uç)
+    fade = nt.nodes.new("ShaderNodeMath")
+    fade.operation = "SUBTRACT"
+    fade.inputs[0].default_value = 1.0
+    nt.links.new(sep.outputs["Z"], fade.inputs[1])
+    fade2 = nt.nodes.new("ShaderNodeMath")
+    fade2.operation = "POWER"
+    fade2.inputs[1].default_value = 1.8
+    nt.links.new(fade.outputs[0], fade2.inputs[0])
+    # kenarlarda yumuşak geçiş
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.5
+    inv = nt.nodes.new("ShaderNodeMath")
+    inv.operation = "SUBTRACT"
+    inv.inputs[0].default_value = 1.0
+    nt.links.new(lw.outputs["Facing"], inv.inputs[1])
+    edge = nt.nodes.new("ShaderNodeMath")
+    edge.operation = "POWER"
+    edge.inputs[1].default_value = 2.5
+    nt.links.new(inv.outputs[0], edge.inputs[0])
+    # toz zerrecikleri
+    dust = nt.nodes.new("ShaderNodeTexNoise")
+    dust.inputs["Scale"].default_value = 18
+    dust.inputs["Detail"].default_value = 2
+    nt.links.new(tc.outputs["Object"], dust.inputs["Vector"])
+    dmr = nt.nodes.new("ShaderNodeMapRange")
+    dmr.inputs["From Min"].default_value = 0.35
+    dmr.inputs["From Max"].default_value = 0.75
+    dmr.inputs["To Min"].default_value = 0.55
+    dmr.inputs["To Max"].default_value = 1.4
+    nt.links.new(dust.outputs["Fac"], dmr.inputs["Value"])
+    m1 = nt.nodes.new("ShaderNodeMath")
+    m1.operation = "MULTIPLY"
+    nt.links.new(fade2.outputs[0], m1.inputs[0])
+    nt.links.new(edge.outputs[0], m1.inputs[1])
+    m2 = nt.nodes.new("ShaderNodeMath")
+    m2.operation = "MULTIPLY"
+    nt.links.new(m1.outputs[0], m2.inputs[0])
+    nt.links.new(dmr.outputs["Result"], m2.inputs[1])
+    strength = nt.nodes.new("ShaderNodeValue")
+    strength.name = "huzme_guc"
+    strength.outputs[0].default_value = 0.15
+    m3 = nt.nodes.new("ShaderNodeMath")
+    m3.operation = "MULTIPLY"
+    nt.links.new(m2.outputs[0], m3.inputs[0])
+    nt.links.new(strength.outputs[0], m3.inputs[1])
+    nt.links.new(m3.outputs[0], em.inputs["Strength"])
+    nt.links.new(tr.outputs[0], add.inputs[0])
+    nt.links.new(em.outputs[0], add.inputs[1])
+    nt.links.new(add.outputs[0], out.inputs["Surface"])
+    m.use_backface_culling = False
+    return m
+
+
 def materials():
     M = {}
     # zemin: siyah-beyaz mermer dama
@@ -244,8 +448,15 @@ def materials():
     M["lambri"] = add_noise_bump(mat("lambri", (0.035, 0.022, 0.015), 0.45, coat=0.3), 60, 0.05)
     M["tavan"] = mat("tavan", (0.08, 0.075, 0.07), 0.9)
     M["sutun"] = add_noise_bump(mat("sutun", (0.6, 0.57, 0.52), 0.35), 8, 0.05, (0.25, 0.5))
-    M["mermer"] = add_noise_bump(mat("mermer", (0.62, 0.6, 0.56), 0.3), 5, 0.04, (0.2, 0.45))
-    M["kaide"] = add_noise_bump(mat("kaide", (0.05, 0.05, 0.055), 0.25), 10, 0.03, (0.15, 0.4))
+    M["mermer"] = veined_marble("mermer", (0.68, 0.66, 0.62), (0.5, 0.49, 0.47), 3.5, vein_w=0.018)
+    M["kaide"] = veined_marble("kaide", (0.035, 0.035, 0.04), (0.2, 0.19, 0.18), 1.5, vein_w=0.02)
+    M["kadife"] = mat("kadife", (0.22, 0.005, 0.015), 0.85)
+    M["kadife"].node_tree.nodes["Principled BSDF"].inputs["Sheen Weight"].default_value = 1.0
+    M["kadife"].node_tree.nodes["Principled BSDF"].inputs["Sheen Tint"].default_value = (1.0, 0.4, 0.4, 1)
+    M["pirinc"] = add_noise_bump(mat("pirinc", (0.75, 0.55, 0.25), 0.3, metal=1.0), 60, 0.03)
+    M["koyu_ahsap"] = add_noise_bump(mat("koyu_ahsap", (0.03, 0.015, 0.008), 0.5), 40, 0.1)
+    M["yagliboya"] = oil_painting()
+    M["huzme"] = beam_material()
     M["cerceve"] = mat("cerceve", (0.5, 0.35, 0.1), 0.35, metal=1.0)
     M["tablo"] = add_noise_bump(mat("tablo", (0.05, 0.06, 0.04), 0.7), 30, 0.3)
     M["pencere"] = mat("pencere", (0, 0, 0), 1, emit=(0.35, 0.5, 1.0), emit_str=0.35)
@@ -314,9 +525,46 @@ def build_hall(M):
         L.data.energy = 260
         L.data.color = (0.4, 0.55, 1.0)
     # sağ duvarda tablolar
+    X = HALL_W / 2
     for y in [6.75, 20.75]:
-        box(f"cerceve_{y}", (HALL_W / 2 - 0.05, y, 2.6), (0.08, 2.0, 1.5), M["cerceve"], bev=0.03)
-        box(f"tablo_{y}", (HALL_W / 2 - 0.1, y, 2.6), (0.02, 1.75, 1.25), M["tablo"], bev=0)
+        z = 2.6
+        frame_ring(f"cerceve_dis_{y}", X, y, z, 2.1, 1.62, 0.13, 0.12, M["cerceve"])
+        frame_ring(f"cerceve_ic_{y}", X, y, z, 1.86, 1.38, 0.05, 0.07, M["koyu_ahsap"])
+        frame_ring(f"cerceve_kenar_{y}", X, y, z, 1.78, 1.3, 0.03, 0.09, M["cerceve"])
+        box(f"tablo_{y}", (X - 0.03, y, z), (0.02, 1.74, 1.26), M["yagliboya"], bev=0)
+        for dy in (-1, 1):  # köşe süsleri
+            for dz in (-1, 1):
+                sphere(f"rozet_{y}_{dy}_{dz}", (X - 0.13, y + dy * 0.985, z + dz * 0.745), (0.035, 0.07, 0.07),
+                       M["cerceve"], segs=16)
+        # tablo lambası (gece kapalı)
+        cyl(f"lamba_kol_{y}", (X - 0.2, y, z + 0.98), 0.012, 0.4, M["pirinc"], rot=(0, math.radians(90), 0))
+        cyl(f"lamba_{y}", (X - 0.4, y, z + 0.95), 0.05, 0.7, M["pirinc"], rot=(math.radians(90), 0, 0))
+    stanchions(M)
+
+
+def stanchions(M):
+    """Heykellerin önünde pirinç direkler ve aralarında sarkan kadife kordonlar."""
+    x = STATUE_X + 0.95
+    ys = [STATUE_YS[0] - 1.75] + [(a + b) / 2 for a, b in zip(STATUE_YS, STATUE_YS[1:])] + [STATUE_YS[-1] + 1.75]
+    top = 0.92
+    for i, y in enumerate(ys):
+        cyl(f"direk_taban_{i}", (x, y, 0.015), 0.15, 0.03, M["pirinc"], bev=0.008)
+        cyl(f"direk_{i}", (x, y, top / 2), 0.024, top, M["pirinc"], bev=0.004)
+        sphere(f"direk_bas_{i}", (x, y, top + 0.03), (0.045, 0.045, 0.05), M["pirinc"], segs=24)
+    for i, (y1, y2) in enumerate(zip(ys, ys[1:])):
+        cu = bpy.data.curves.new(f"kordon_{i}", "CURVE")
+        cu.dimensions = "3D"
+        cu.bevel_depth = 0.026
+        cu.bevel_resolution = 4
+        sp = cu.splines.new("BEZIER")
+        sp.bezier_points.add(2)
+        pts = [(x, y1 + 0.05, top - 0.02), (x, (y1 + y2) / 2, top - 0.3), (x, y2 - 0.05, top - 0.02)]
+        for bp, p in zip(sp.bezier_points, pts):
+            bp.co = p
+            bp.handle_left_type = bp.handle_right_type = "AUTO"
+        o = bpy.data.objects.new(f"kordon_{i}", cu)
+        bpy.context.scene.collection.objects.link(o)
+        o.data.materials.append(M["kadife"])
     # koridor sonunda ÇIKIŞ levhası
     box("cikis_kutu", (0, HALL_L - 0.05, 4.6), (1.1, 0.1, 0.38), M["cikis_kutu"], bev=0.01)
     bpy.ops.object.text_add(location=(0, HALL_L - 0.11, 4.6), rotation=(math.radians(90), 0, 0))
@@ -377,37 +625,76 @@ def build_clock(M):
 
 # ----------------------------------------------------------------- karakterler
 def build_statue(M, i, y):
+    """Klasik cüppeli mermer heykel (ön yüz -Y), basamaklı kaide üzerinde."""
     root = empty(f"heykel_{i}", (STATUE_X, y, 0))
-    # kaide
-    box(f"kaide_{i}", (STATUE_X, y, 0.4), (0.95, 0.95, 0.8), M["kaide"], bev=0.03, parent=root)
-    box(f"kaide_ust_{i}", (STATUE_X, y, 0.83), (1.05, 1.05, 0.06), M["kaide"], bev=0.02, parent=root)
-    fig = empty(f"figur_{i}", (STATUE_X, y, 0.86), parent=root)
+    X = STATUE_X
+    # basamaklı kaide + pirinç plaket (koridora bakan yüzde)
+    box(f"kaide_alt_{i}", (X, y, 0.06), (1.12, 1.12, 0.12), M["kaide"], bev=0.02, parent=root)
+    box(f"kaide_{i}", (X, y, 0.45), (0.9, 0.9, 0.68), M["kaide"], bev=0.025, parent=root)
+    box(f"kaide_ust_{i}", (X, y, 0.825), (1.04, 1.04, 0.07), M["kaide"], bev=0.02, parent=root)
+    box(f"plaket_{i}", (X + 0.455, y, 0.52), (0.012, 0.36, 0.13), M["pirinc"], bev=0.004, parent=root)
     z0 = 0.86
-    # cüppe gövde
-    body = cyl(f"cuppe_{i}", (STATUE_X, y, z0 + 0.75), 0.42, 1.5, M["mermer"], r2=0.2, verts=64, bev=0.02)
-    subsurf(body, 1)
-    set_parent(body, fig)
-    # kıvrımlar: gövdeye dikey yivler
-    for k in range(10):
-        a = k * math.tau / 10
-        r = 0.33
-        f = sphere(f"kivrim_{i}_{k}", (STATUE_X + math.cos(a) * r, y + math.sin(a) * r, z0 + 0.55),
-                   (0.07, 0.07, 0.55), M["mermer"], segs=24)
-        f.rotation_euler = (math.sin(a) * 0.15, -math.cos(a) * 0.15, 0)
-        set_parent(f, fig)
-    sphere(f"omuz_{i}", (STATUE_X, y, z0 + 1.5), (0.4, 0.27, 0.16), M["mermer"], parent=fig)
-    sphere(f"boyun_{i}", (STATUE_X, y, z0 + 1.62), (0.09, 0.09, 0.12), M["mermer"], parent=fig, segs=24)
-    head = empty(f"kafa_{i}", (STATUE_X, y, z0 + 1.88), parent=fig)
-    sphere(f"kafa_m_{i}", (STATUE_X, y, z0 + 1.88), (0.17, 0.19, 0.23), M["mermer"], parent=head)
+    fig = empty(f"figur_{i}", (X, y, z0), parent=root)
+    rnd = random.Random(100 + i)
+    ph = rnd.uniform(0, math.tau)
+
+    def W(dx, dy, dz):  # figüre göre yerel -> dünya
+        return (X + dx, y + dy, z0 + dz)
+
+    # cüppe: aşağı doğru derinleşen kumaş kıvrımları
+    def folds(th, z):
+        k = max(0.0, 1 - z / 1.35) ** 0.8
+        return k * (0.034 * math.sin(9 * th + ph + 0.8 * z) + 0.012 * math.sin(23 * th + 2 * ph)) \
+            + 0.006 * math.sin(5 * th + ph)
+    robe = lathe(f"cuppe_{i}", [(0.0, 0.0), (0.0, 0.4), (0.08, 0.415), (0.4, 0.36), (0.8, 0.29), (1.05, 0.255),
+                               (1.25, 0.27), (1.4, 0.275), (1.5, 0.2), (1.54, 0.0)],
+                 M["mermer"], segs=128, folds=folds, loc=W(0, 0, 0))
+    robe.scale = (1, 0.8, 1)
+    set_parent(robe, fig)
+    sphere(f"omuz_{i}", W(0, 0, 1.43), (0.36, 0.22, 0.15), M["mermer"], parent=fig)
+    # göğüsten kalçaya çapraz kumaş kuşak
+    sash = sphere(f"kusak_{i}", W(0.02, -0.2, 1.12), (0.075, 0.05, 0.42), M["mermer"], segs=32)
+    sash.rotation_euler = (0, math.radians(38), 0)
+    set_parent(sash, fig)
+    # kollar: biri yanda sarkık, diğeri göğüste kumaşı tutar
+    tube(f"sag_ust_kol_{i}", W(0.33, 0, 1.43), W(0.37, -0.02, 0.98), 0.085, 0.07, M["mermer"], parent=fig)
+    tube(f"sag_on_kol_{i}", W(0.37, -0.02, 0.98), W(0.33, -0.1, 0.64), 0.066, 0.05, M["mermer"], parent=fig)
+    sphere(f"sag_el_{i}", W(0.32, -0.12, 0.58), (0.045, 0.035, 0.07), M["mermer"], parent=fig, segs=24)
+    tube(f"sol_ust_kol_{i}", W(-0.33, 0, 1.43), W(-0.36, -0.06, 1.0), 0.085, 0.07, M["mermer"], parent=fig)
+    tube(f"sol_on_kol_{i}", W(-0.36, -0.06, 1.0), W(-0.04, -0.25, 1.1), 0.066, 0.05, M["mermer"], parent=fig)
+    sphere(f"sol_el_{i}", W(0.0, -0.265, 1.12), (0.05, 0.04, 0.06), M["mermer"], parent=fig, segs=24)
+    sphere(f"boyun_{i}", W(0, 0, 1.6), (0.075, 0.075, 0.11), M["mermer"], parent=fig, segs=32)
+    # kafa: klasik yüz hatları
+    hz = 1.84
+    head = empty(f"kafa_{i}", W(0, 0, hz), parent=fig)
+    sphere(f"kafatasi_{i}", W(0, 0.01, hz), (0.135, 0.155, 0.17), M["mermer"], parent=head)
+    nose = sphere(f"burun_{i}", W(0, -0.152, hz - 0.005), (0.02, 0.035, 0.055), M["mermer"], segs=24)
+    nose.rotation_euler = (math.radians(-12), 0, 0)
+    set_parent(nose, head)
+    sphere(f"kas_kemeri_{i}", W(0, -0.118, hz + 0.05), (0.08, 0.022, 0.015), M["mermer"], parent=head, segs=32)
+    for s in (-1, 1):
+        sphere(f"kulak_{i}_{s}", W(s * 0.13, 0.0, hz), (0.014, 0.028, 0.04), M["mermer"], parent=head, segs=16)
+        if i != EVIL:  # kapalı göz kapakları
+            sphere(f"kapak_{i}_{s}", W(s * 0.048, -0.128, hz + 0.018), (0.03, 0.018, 0.016), M["mermer"],
+                   parent=head, segs=24)
+    # bukle bukle saç
+    for k in range(70):
+        th = rnd.uniform(0, math.tau)
+        zz = rnd.uniform(0.05, 1.0)
+        d = Vector((math.cos(th) * math.sqrt(1 - zz * zz), math.sin(th) * math.sqrt(1 - zz * zz), zz))
+        if d.y < -0.45 and d.z < 0.55:  # yüzü açık bırak
+            continue
+        p = Vector((d.x * 0.135, 0.01 + d.y * 0.155, hz + d.z * 0.17))
+        r = rnd.uniform(0.028, 0.042)
+        sphere(f"bukle_{i}_{k}", W(p.x, p.y, p.z), (r, r, r * 0.85), M["mermer"], parent=head, segs=16)
     if i == EVIL:
-        # oyuk gözler ve ağız yarığı (yalnız dönünce görünür)
+        # oyuk gözler ve alında çatlak (yalnız dönünce görünür)
         for s in (-1, 1):
-            e = sphere(f"oyuk_goz_{s}", (STATUE_X + s * 0.06, y - 0.168, z0 + 1.91), (0.026, 0.03, 0.062), M["oyuk"], segs=24)
-            e.rotation_euler = (0, s * math.radians(28), s * math.radians(-15))
+            e = sphere(f"oyuk_goz_{s}", W(s * 0.05, -0.127, hz + 0.015), (0.032, 0.022, 0.034), M["oyuk"], segs=24)
+            e.rotation_euler = (0, s * math.radians(20), s * math.radians(-12))
             set_parent(e, head)
-        # yüzde çatlak
-        for k, (dx, dz, rot) in enumerate([(0.035, 0.1, 25), (0.06, 0.15, -30)]):
-            cr = sphere(f"catlak_{k}", (STATUE_X + dx, y - 0.17, z0 + 1.88 + dz), (0.0015, 0.004, 0.035), M["oyuk"], segs=12)
+        for k, (dx, dz, rot) in enumerate([(0.03, 0.09, 25), (0.05, 0.13, -30), (0.035, 0.05, 10)]):
+            cr = sphere(f"catlak_{k}", W(dx, -0.135, hz + dz), (0.0015, 0.004, 0.03), M["oyuk"], segs=12)
             cr.rotation_euler = (0, math.radians(rot), 0)
             set_parent(cr, head)
     # duvara dönük (ön yüz -Y; -90 => -X'e bakar)
@@ -435,9 +722,11 @@ def build_kemal(M):
     for s in (-1, 1):
         sphere(f"apolet_{s}", (s * 0.24, 0, 1.1), (0.1, 0.08, 0.025), M["altin"], parent=body, segs=24)
     # sol kol aşağıda
-    la = sphere("sol_kol", (-0.37, 0, 0.84), (0.085, 0.085, 0.24), M["uniforma"], parent=body, segs=32)
+    larm = empty("sol_omuz", (-0.33, 0, 1.04), parent=body)
+    la = sphere("sol_kol", (-0.37, 0, 0.84), (0.085, 0.085, 0.24), M["uniforma"], segs=32)
     la.rotation_euler = (0, math.radians(-12), 0)
-    sphere("sol_el", (-0.42, 0, 0.6), (0.075, 0.075, 0.08), M["ten"], parent=body, segs=32)
+    set_parent(la, larm)
+    sphere("sol_el", (-0.42, 0, 0.6), (0.075, 0.075, 0.08), M["ten"], parent=larm, segs=32)
     # sağ kol öne uzanmış, fener tutuyor
     ra = sphere("sag_kol", (0.33, -0.18, 0.95), (0.085, 0.24, 0.085), M["uniforma"], parent=body, segs=32)
     ra.rotation_euler = (math.radians(-10), 0, math.radians(8))
@@ -456,8 +745,29 @@ def build_kemal(M):
     spot.data.spot_blend = 0.35
     spot.data.shadow_soft_size = 0.03
     set_parent(spot, fpiv)
+    # görünür ışık huzmesi (havadaki toz)
+    BL = 5.2
+    bpy.ops.mesh.primitive_cone_add(vertices=48, radius1=0.05, radius2=BL * math.tan(math.radians(13)),
+                                    depth=BL, end_fill_type="NOTHING",
+                                    location=(0.31, -0.78 - BL / 2, 0.95), rotation=(math.radians(90), 0, 0))
+    beam = bpy.context.active_object
+    beam.name = "huzme"
+    smooth(beam)
+    assign(beam, M["huzme"])
+    beam.visible_shadow = False
+    set_parent(beam, fpiv)
+    # huzme parlaklığı fenerin gücünü izler (sürücü)
+    val = M["huzme"].node_tree.nodes["huzme_guc"].outputs[0]
+    fc = val.driver_add("default_value")
+    v = fc.driver.variables.new()
+    v.name = "e"
+    v.targets[0].id_type = "LIGHT"
+    v.targets[0].id = spot.data
+    v.targets[0].data_path = "energy"
+    fc.driver.expression = "e * 0.0012"
     # kafa
     head = empty("kemal_kafa", (0, 0, 1.18), parent=body)
+    eyes, brows = [], []
     sphere("kafa", (0, 0, 1.42), (0.36, 0.34, 0.34), M["ten"], parent=head)
     sphere("burun", (0, -0.335, 1.38), (0.055, 0.045, 0.05), M["ten"], parent=head, segs=24)
     for s in (-1, 1):
@@ -471,6 +781,10 @@ def build_kemal(M):
         bm = sphere(f"biyik_{s}", (s * 0.08, -0.315, 1.31), (0.1, 0.04, 0.035), M["biyik"], segs=24)
         bm.rotation_euler = (0, s * math.radians(12), s * math.radians(-10))
         set_parent(bm, head)
+        eyes.append(bpy.data.objects[f"goz_{s}"])
+        brows.append(b)
+    mouth = sphere("agiz", (0, -0.29, 1.245), (0.035, 0.02, 0.04), M["oyuk"], parent=head, segs=24)
+    mouth.scale = (0, 0, 0)
     # şapka
     cap = empty("sapka", (0, 0, 1.68), parent=head)
     cyl("sapka_govde", (0, 0, 1.72), 0.34, 0.16, M["uniforma"], r2=0.37, bev=0.02, parent=cap)
@@ -479,11 +793,12 @@ def build_kemal(M):
     v.rotation_euler = (math.radians(-12), 0, 0)
     sphere("sapka_rozet", (0, -0.34, 1.73), (0.04, 0.012, 0.04), M["altin"], parent=cap, segs=16)
     cap.rotation_euler = (math.radians(-6), math.radians(4), 0)
-    return root, body, head, legs, fpiv, spot
+    face = {"eyes": eyes, "brows": brows, "mouth": mouth, "larm": larm}
+    return root, body, head, legs, fpiv, spot, face
 
 
 # ----------------------------------------------------------------- animasyon
-def animate_kemal(root, body, head, legs, fpiv, spot):
+def animate_kemal(root, body, head, legs, fpiv, spot, face):
     # Ç1: koridorda +Y yönünde yürür (ön yüz -Y => rot z = pi)
     a, b = S1
     for f in range(a, b + 1):
@@ -503,6 +818,8 @@ def animate_kemal(root, body, head, legs, fpiv, spot):
             key(leg, "rotation_euler", f)
         fpiv.rotation_euler = (math.radians(12), 0, math.sin(ph * 0.35) * 0.25)
         key(fpiv, "rotation_euler", f)
+        face["larm"].rotation_euler = (-math.sin(ph) * 0.35, 0, 0)  # sol kol sallanır
+        key(face["larm"], "rotation_euler", f)
     # Ç2: durur, sağa sola bakar
     a, b = S2
     for leg in legs:
@@ -515,6 +832,15 @@ def animate_kemal(root, body, head, legs, fpiv, spot):
     for f, rz, rx in ((a, 0, 0), (a + 24, 0.5, -0.05), (a + 60, 0.5, -0.05),
                       (a + 84, -0.55, 0.0), (a + 115, -0.55, 0.0), (b, 0.05, 0.12)):
         key(head, "rotation_euler", f, (rx, 0, rz))
+    key(face["larm"], "rotation_euler", a, (0, 0, 0))
+    # göz kırpma
+    for e in face["eyes"]:
+        sc = tuple(e.scale)
+        key(e, "scale", 1, sc)
+        for f in (a + 14, a + 72, a + 128, S4[0] + 40):
+            key(e, "scale", f - 1, sc)
+            key(e, "scale", f + 1, (sc[0], sc[1], sc[2] * 0.1))
+            key(e, "scale", f + 3, sc)
     # nefes alma
     for f in range(a, b + 1, 12):
         k = ((f - a) // 12) % 2
@@ -532,6 +858,43 @@ def animate_kemal(root, body, head, legs, fpiv, spot):
              (S6[0], -0.66, -18), (SON, -0.67, -19)]
     for f, rz, rx in sweep:
         key(fpiv, "rotation_euler", f, (math.radians(rx), 0, rz))
+    # heykeli görünce irkilip geri sıçrar (fener titrerken)
+    jolt = S5[0] + 27
+    key(body, "location", jolt, (0, 0, 0))
+    key(body, "rotation_euler", jolt, (0, 0, 0))
+    key(head, "rotation_euler", jolt, (0.05, 0, 0))
+    key(body, "location", jolt + 5, (0, 0.24, 0.03))
+    key(body, "rotation_euler", jolt + 5, (math.radians(-9), 0, 0))
+    key(head, "rotation_euler", jolt + 5, (-0.12, 0, 0))
+    key(body, "location", jolt + 16, (0, 0.22, 0))
+    key(body, "rotation_euler", jolt + 16, (math.radians(-4), 0, 0))
+    key(head, "rotation_euler", jolt + 16, (-0.04, 0, 0))
+    # korkmuş yüz: gözler büyür, kaşlar kalkar, ağız açılır
+    a5 = S5B[0]
+    for e in face["eyes"]:
+        sc = tuple(e.scale)
+        key(e, "scale", a5 - 1, sc, "CONSTANT")
+        key(e, "scale", a5, (sc[0] * 1.3, sc[1], sc[2] * 1.4), "CONSTANT")
+    for b_ in face["brows"]:
+        loc, rot = tuple(b_.location), tuple(b_.rotation_euler)
+        key(b_, "location", a5 - 1, loc, "CONSTANT")
+        key(b_, "rotation_euler", a5 - 1, rot, "CONSTANT")
+        key(b_, "location", a5, (loc[0], loc[1], loc[2] + 0.035), "CONSTANT")
+        key(b_, "rotation_euler", a5, (rot[0], rot[1] * 1.6, rot[2]), "CONSTANT")
+    mo = face["mouth"]
+    key(mo, "scale", a5 - 1, (0, 0, 0), "CONSTANT")
+    key(mo, "scale", a5, (0.03, 0.02, 0.035), "CONSTANT")
+    key(mo, "scale", S5B[1], (0.034, 0.02, 0.045))
+    # titreyen el: fener sallanır
+    for fc in fpiv.animation_data.action.fcurves:
+        if fc.data_path == "rotation_euler" and fc.array_index in (0, 2):
+            mod = fc.modifiers.new("NOISE")
+            mod.scale = 4
+            mod.strength = 0.035
+            mod.phase = 7 * fc.array_index
+            mod.use_restricted_range = True
+            mod.frame_start = jolt
+            mod.frame_end = SON
     # fener ışığı: titreme ve sönme
     spot.data.energy = 600
     spot.data.keyframe_insert("energy", frame=1)
@@ -588,6 +951,30 @@ def animate_statues(statues, M):
     rim.data.energy = 0
     rim.data.keyframe_insert("energy", frame=SON - 14)
     set_all_interp(rim.data, "CONSTANT")
+    # Kemal'in yüz çekimi: heykel tarafından vuran titrek kırmızı + çok zayıf sıcak dolgu
+    bpy.ops.object.light_add(type="POINT", location=(0.6, 10.9, 1.9))
+    kr = bpy.context.active_object
+    kr.name = "yuz_kirmizi"
+    kr.data.color = (1.0, 0.05, 0.03)
+    kr.data.shadow_soft_size = 0.3
+    rnd = random.Random(4)
+    kr.data.energy = 0
+    kr.data.keyframe_insert("energy", frame=1)
+    for f in range(S5B[0], S5B[1] + 1, 3):
+        kr.data.energy = rnd.choice([3, 8, 15, 22, 28])
+        kr.data.keyframe_insert("energy", frame=f)
+    kr.data.energy = 0
+    kr.data.keyframe_insert("energy", frame=S5B[1] + 1)
+    set_all_interp(kr.data, "CONSTANT")
+    bpy.ops.object.light_add(type="POINT", location=(0.9, 9.6, 1.0))
+    wf = bpy.context.active_object
+    wf.name = "yuz_dolgu"
+    wf.data.color = (1.0, 0.8, 0.6)
+    wf.data.shadow_soft_size = 0.4
+    for f, e in ((1, 0), (S5B[0], 6), (S5B[1] + 1, 0)):
+        wf.data.energy = e
+        wf.data.keyframe_insert("energy", frame=f)
+    set_all_interp(wf.data, "CONSTANT")
 
 
 # ----------------------------------------------------------------- kameralar
@@ -656,17 +1043,22 @@ def build_cameras(kemal_head, statue_heads):
                   (S5[1], (3.1, 8.45, 2.0), (-2.0, 13.2, 1.7))])
     handheld(c4, S4[0], S5[1], seed=4)
 
+    c5 = camera("K5_korku", 50, f_kemal, 2.2)
+    cam_move(c5, [(S5B[0], (0.05, 9.92, 1.56), (1.82, 10.2, 1.5)),
+                  (S5B[1], (0.35, 9.98, 1.53), (1.82, 10.2, 1.5))])
+    handheld(c5, *S5B, amp=0.006, seed=5)
+
     c6 = camera("K6_yuz", 85, f_heykel, 2.0)
     cam_move(c6, [(S6[0], (0.7, 12.75, 2.5), (STATUE_X, 13.0, 2.7)),
                   (SON, (-1.15, 12.95, 2.7), (STATUE_X, 13.0, 2.72))])
     handheld(c6, *S6, amp=0.003, seed=6)
 
-    for cam, f in ((c1, S1[0]), (c2, S2[0]), (c3, S3[0]), (c4, S4[0]), (c6, S6[0])):
+    for cam, f in ((c1, S1[0]), (c2, S2[0]), (c3, S3[0]), (c4, S4[0]), (c5, S5B[0]), (c6, S6[0])):
         m = scn.timeline_markers.new(cam.name, frame=f)
         m.camera = cam
     scn.camera = c1
     # kesmeler arası enterpolasyon karışmasın
-    for cam in (c1, c2, c3, c4, c6):
+    for cam in (c1, c2, c3, c4, c5, c6):
         for fc in cam.animation_data.action.fcurves:
             for kp in fc.keyframe_points:
                 kp.interpolation = "BEZIER"
