@@ -4,6 +4,8 @@ Hiçbir hazır ses dosyası kullanmadan; oda uğultusu, ayak sesleri, saat tık�
 çan, gerilim drone'u, ani vuruş (stinger), elektrik cızırtısı ve son notayı
 matematiksel olarak üretir. Kullanım:  python ses.py cikti.wav
 """
+import os
+import subprocess
 import sys
 import wave
 
@@ -234,6 +236,49 @@ def end_note():
     return s / np.max(np.abs(s))
 
 
+def load_mp3(path):
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", path, "-ac", "1", "-ar", str(SR),
+                          "-f", "f32le", "-"], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, dtype="<f4").astype(float)
+
+
+def highpass_fft(x, cutoff, slope=2):
+    X = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1 / SR) + 1e-9
+    X *= 1 / np.sqrt(1 + (cutoff / f) ** (2 * slope))
+    return np.fft.irfft(X, len(x))
+
+
+def voices():
+    """seslendirme/ klasöründeki ElevenLabs repliklerini karaktere göre işleyip yerleştirir."""
+    import seslendirme as sl
+    if not os.path.isdir(sl.KLASOR):
+        return None
+    track = np.zeros(N)
+    found = False
+    for name, who, start, _ in sl.REPLIKLER:
+        p = os.path.join(sl.KLASOR, name + ".mp3")
+        if not os.path.exists(p):
+            continue
+        found = True
+        x = highpass_fft(load_mp3(p), 90)
+        x = np.pad(x, (0, int(2.0 * SR)))  # yankı kuyruğu için boşluk
+        if who == "riza":
+            # hafızadan gelen fısıltı: ince bant + uzun yankı
+            x = bandpass_fft(x, 250, 6500)
+            x = reverb(x, 2.2, 0.38, 21)
+        elif who == "kemal":
+            x = reverb(x, 1.6, 0.18, 22)  # müze salonu
+        else:
+            x = reverb(x, 0.8, 0.06, 23)  # anlatıcı: yakın, kuru
+        rms = np.sqrt(np.mean(x[np.abs(x) > 1e-3] ** 2))
+        x *= 10 ** (-17 / 20) / (rms + 1e-9)
+        i = int(start * SR)
+        n = min(len(x), N - i)
+        track[i:i + n] += x[:n]
+    return track if found else None
+
+
 def main(out):
     room_tone()
     footsteps()
@@ -260,6 +305,15 @@ def main(out):
 
     mix = np.stack([L, R], axis=1)
     mix = np.tanh(mix * 1.2) / np.tanh(1.2)  # yumuşak limiter
+    mix *= 0.7 / np.max(np.abs(mix))
+    voice = voices()
+    if voice is not None:
+        # konuşma sırasında efekt/müzik ~7 dB kısılır (ducking)
+        e = lowpass_fft(np.abs(voice), 4)  # yumuşak zarf
+        e = np.clip(e / (np.percentile(e[e > 1e-4], 90) + 1e-9), 0, 1)
+        duck = 1 - 0.55 * e
+        mix = mix * duck[:, None] + voice[:, None]
+        mix = np.tanh(mix * 1.1) / np.tanh(1.1)
     mix *= 0.89 / np.max(np.abs(mix))
     pcm = (mix * 32767).astype("<i2")
     with wave.open(out, "wb") as wf:
