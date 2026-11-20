@@ -267,10 +267,10 @@ def voices():
             # hafızadan gelen fısıltı: ince bant + uzun yankı
             x = bandpass_fft(x, 250, 6500)
             x = reverb(x, 2.2, 0.38, 21)
-        elif who == "kemal":
-            x = reverb(x, 1.6, 0.18, 22)  # müze salonu
+        elif name.startswith(("01_", "05_")):
+            x = reverb(x, 0.8, 0.06, 23)  # Kemal anlatıyor: yakın, kuru
         else:
-            x = reverb(x, 0.8, 0.06, 23)  # anlatıcı: yakın, kuru
+            x = reverb(x, 1.6, 0.18, 22)  # Kemal sahnede: müze salonu
         rms = np.sqrt(np.mean(x[np.abs(x) > 1e-3] ** 2))
         x *= 10 ** (-17 / 20) / (rms + 1e-9)
         i = int(start * SR)

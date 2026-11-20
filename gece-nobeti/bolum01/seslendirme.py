@@ -18,18 +18,17 @@ KLASOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seslendirme")
 
 # ElevenLabs hazır sesleri
 SESLER = {
-    "anlatici": "nPczCjzI2devNBz1zQrb",   # Brian: derin, anlatıcı
     "riza": "pqHfZKP75CvOlQylNhV4",       # Bill: yaşlı adam
-    "kemal": "iP95p4xoKVk53GoZ742B",      # Chris: sıradan, orta yaşlı
+    "kemal": "iP95p4xoKVk53GoZ742B",      # Chris: Kemal, hikâyeyi de kendisi anlatır
 }
 
 # (dosya adı, karakter, başlangıç saniyesi, metin) — başlangıçlar ses.py'de kullanılır
 REPLIKLER = [
-    ("01_anlatici", "anlatici", 0.6, "Müzedeki ilk gecemdi. Bana bir fener, bir de not bıraktılar."),
+    ("01_kemal", "kemal", 0.6, "Müzedeki ilk gecemdi. Bana bir fener, bir de not bıraktılar."),
     ("02_riza", "riza", 5.8, "[whispers] Saat üçte heykellere bakma evlat, ne olursa olsun."),
     ("03_kemal", "kemal", 16.4, "[nervously] Bir kere bakmaktan ne olur ki?"),
     ("04_kemal", "kemal", 28.2, "[scared whisper] Az önce yüzü duvara dönüktü!"),
-    ("05_anlatici", "anlatici", 34.6, "Sen olsan, ışığı söndürür müydün?"),
+    ("05_kemal", "kemal", 34.6, "Sen olsan, ışığı söndürür müydün?"),
 ]
 
 
