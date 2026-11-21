@@ -5,7 +5,7 @@ import json, os, sys, urllib.request
 
 SES = "dVlqdPSbCzy23eQaIjPB"   # "Anlatıcı – Gaziantep Kalesi" (tasarlanmış ses C)
 MODEL = "eleven_multilingual_v2"  # v3'e göre daha kararlı, takılma az
-AYAR = {"stability": 0.6, "similarity_boost": 0.8, "style": 0.15, "speed": 1.03}
+AYAR = {"stability": 0.5, "similarity_boost": 0.8, "style": 0.0, "speed": 1.0}
 KLASOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seslendirme")
 
 CUMLELER = [
@@ -23,21 +23,20 @@ CUMLELER = [
     "Tebrikler, Gaziantep Kalesi'ni yaptın.",
 ]
 
-def uret(i, metin):
-    yol = os.path.join(KLASOR, f"{i:02d}.mp3")
-    if os.path.exists(yol) and "--yeniden" not in sys.argv:
-        return
-    onceki = CUMLELER[i - 2] if i > 1 else ""
-    sonraki = CUMLELER[i] if i < len(CUMLELER) else ""
-    govde = {"text": metin, "model_id": MODEL, "language_code": "tr", "voice_settings": AYAR,
-             "previous_text": onceki, "next_text": sonraki}
-    r = urllib.request.Request(f"https://api.elevenlabs.io/v1/text-to-speech/{SES}",
+def tek_parca():
+    """Tüm metni tek seferde üretir: ton baştan sona aynı kalır, geçişler doğal olur.
+    Kelime zamanlamaları zamanlama.json'a yazılır (yazılar ve sahne geçişleri için)."""
+    import base64
+    metin = ' <break time="0.6s" /> '.join(CUMLELER)
+    govde = {"text": metin, "model_id": MODEL, "language_code": "tr", "voice_settings": AYAR}
+    r = urllib.request.Request(f"https://api.elevenlabs.io/v1/text-to-speech/{SES}/with-timestamps",
         data=json.dumps(govde).encode(),
         headers={"xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "x"), "Content-Type": "application/json"})
-    open(yol, "wb").write(urllib.request.urlopen(r).read())
-    print("ok", yol)
+    d = json.load(urllib.request.urlopen(r))
+    kok = os.path.dirname(KLASOR)
+    open(os.path.join(kok, "seslendirme_tam.mp3"), "wb").write(base64.b64decode(d["audio_base64"]))
+    json.dump(d["alignment"], open(os.path.join(kok, "zamanlama.json"), "w"), ensure_ascii=False)
+    print("ok")
 
 if __name__ == "__main__":
-    os.makedirs(KLASOR, exist_ok=True)
-    for i, c in enumerate(CUMLELER, 1):
-        uret(i, c)
+    tek_parca()
