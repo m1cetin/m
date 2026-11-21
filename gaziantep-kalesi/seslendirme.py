@@ -3,7 +3,7 @@ Her cümleyi ayrı MP3 olarak seslendirme/ klasörüne yazar. Kullanım: python 
 """
 import json, os, sys, urllib.request
 
-SES = "i4Vkimmf9IrZ2RdG16Rv"   # Ayaz – Warm, Calm & Expressive (ElevenLabs kütüphanesi, Starter plan)
+SES = "c9eIhSvMHBxtYhLX4oBt"   # Orcun Togan (ElevenLabs kütüphanesi; örnek videodaki sese en yakın eşleşme)
 MODEL = "eleven_multilingual_v2"  # v3'e göre daha kararlı, takılma az
 AYAR = {"stability": 0.5, "similarity_boost": 0.8, "style": 0.0, "speed": 1.0}
 KLASOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seslendirme")
