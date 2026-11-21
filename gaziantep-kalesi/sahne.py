@@ -150,6 +150,10 @@ def pop(o, frame, dur=8, final=None):
 def rise(o, frame, depth=3.0, dur=14):
     """Nesne topraktan yukarı yükselerek gelir (surlar, kuleler)."""
     z = o.location.z
+    sc = tuple(o.scale)
+    key(o, "scale", 1, (0.0001,) * 3, "CONSTANT")
+    key(o, "scale", frame - 1, (0.0001,) * 3, "CONSTANT")
+    key(o, "scale", frame, sc)
     key(o, "location", 1, (o.location.x, o.location.y, z - depth), "CONSTANT")
     key(o, "location", frame, (o.location.x, o.location.y, z - depth))
     key(o, "location", frame + dur, (o.location.x, o.location.y, z))
@@ -161,11 +165,11 @@ def materials():
     M = {}
     M["toprak"] = noisy(mat("toprak", (0.36, 0.20, 0.10), 0.9), 4, 0.75, 0.4)
     M["toprak_koyu"] = noisy(mat("toprak_koyu", (0.25, 0.15, 0.08), 0.95), 5, 0.7, 0.4)
-    M["kum"] = noisy(mat("kum", (0.62, 0.45, 0.28), 0.95), 3, 0.85, 0.3)
-    M["cim"] = noisy(mat("cim", (0.22, 0.40, 0.08), 0.9), 8, 0.8, 0.2)
-    M["tas"] = noisy(mat("tas", (0.78, 0.66, 0.48), 0.75), 10, 0.85, 0.35)
-    M["tas_koyu"] = noisy(mat("tas_koyu", (0.58, 0.50, 0.40), 0.8), 10, 0.85, 0.35)
-    M["kaya"] = noisy(mat("kaya", (0.50, 0.38, 0.26), 0.85), 3, 0.7, 0.6)
+    M["kum"] = noisy(mat("kum", (0.78, 0.60, 0.34), 0.95), 3, 0.85, 0.3)
+    M["cim"] = noisy(mat("cim", (0.20, 0.50, 0.08), 0.9), 8, 0.8, 0.2)
+    M["tas"] = noisy(mat("tas", (0.93, 0.86, 0.70), 0.75), 10, 0.85, 0.35)
+    M["tas_koyu"] = noisy(mat("tas_koyu", (0.75, 0.64, 0.48), 0.8), 10, 0.85, 0.35)
+    M["kaya"] = noisy(mat("kaya", (0.58, 0.46, 0.32), 0.85), 3, 0.7, 0.6)
     M["su"] = mat("su", (0.05, 0.45, 0.65), 0.05, trans=0.2)
     M["ahsap"] = noisy(mat("ahsap", (0.40, 0.24, 0.12), 0.7), 20, 0.8, 0.2)
     M["kiremit"] = mat("kiremit", (0.65, 0.22, 0.12), 0.6)
@@ -217,7 +221,7 @@ def sun():
 
 R_TEPE = 3.2      # tepe taban yarıçapı
 H_TEPE = 1.6      # tepe yüksekliği
-BLOK = 11.0       # kesit bloğu kenarı
+BLOK = 16.0       # kesit bloğu kenarı
 DERIN = 2.4       # bloğun toprak derinliği
 
 
@@ -393,8 +397,8 @@ def carsi(M):
 
 def manzara_masasi(M):
     """Kalenin önünde iki kişilik bank, masa, çay ve bir dilim baklava (fıstıklı)."""
-    g = empty("masa", (2.6, -2.2, 0.0))
-    x, y = 2.6, -2.2
+    g = empty("masa", (4.3, -2.0, 0.0))
+    x, y = 4.3, -2.0
     bank = box("bank", (x, y + 0.3, 0.22), (1.1, 0.3, 0.06), M["ahsap"], bev=0.01)
     masa = box("masa_ust", (x, y - 0.15, 0.36), (0.7, 0.45, 0.05), M["ahsap"], bev=0.01)
     ayak = box("masa_ayak", (x, y - 0.15, 0.17), (0.08, 0.08, 0.34), M["ahsap"], bev=0.0)
@@ -433,81 +437,125 @@ def duman(M, loc, frame, n=5):
 
 # ---------------------------------------------------------------- kurgu
 
+def koy_katmani(M, k, z):
+    """Tepenin üstünde küçük kerpiç evlerden bir köy katmanı."""
+    g = empty(f"koy_{k}", (0, 0, z))
+    rnd = random.Random(10 + k)
+    for i in range(7):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = rnd.uniform(0.2, 1.2)
+        w = rnd.uniform(0.28, 0.42)
+        e = box(f"ev_{k}_{i}", (math.cos(a) * r, math.sin(a) * r, z + w * 0.35), (w, w * 0.9, w * 0.7),
+                M["kerpic"], bev=0.02, rot=(0, 0, rnd.uniform(0, 3)))
+        parent(e, g)
+        c = box(f"ev_cati_{k}_{i}", (math.cos(a) * r, math.sin(a) * r, z + w * 0.72), (w * 1.1, w, 0.05),
+                M["ahsap"], bev=0.01, rot=(0, 0, e.rotation_euler.z))
+        parent(c, g)
+    return g
+
+
+def gorunur(o, f_ac, f_kapa=None, dur=8):
+    pop(o, f_ac, dur=dur)
+    if f_kapa:
+        s = tuple(o.scale) if max(o.scale) > 0.01 else (1, 1, 1)
+        key(o, "scale", f_kapa, (1, 1, 1))
+        key(o, "scale", f_kapa + 6, (0.0001,) * 3)
+
+
 def build():
     M = materials()
+    M["kerpic"] = noisy(mat("kerpic", (0.66, 0.47, 0.30), 0.9), 12, 0.85, 0.2)
     bg, sky = world()
     gunes = sun()
-    diorama(M)
+    tepe = diorama(M)
 
-    # 1) Gözetleme kulesi (cümle 2)
+    # 0-1) Köy düzlükte; her yeni köy eskinin üstüne kurulur, höyük büyür
+    tepe_kok = empty("tepe_kok", (0, 0, 0))
+    for o in (tepe, bpy.data.objects["tepe_ust"]):
+        parent(o, tepe_kok)
+    fa, fb = F(T[1] + 1.0), F(T[1] + 7.0)
+    key(tepe_kok, "scale", 1, (1, 1, 0.04))
+    key(tepe_kok, "scale", fa, (1, 1, 0.04))
+    key(tepe_kok, "scale", fb, (1, 1, 1))
+    koy_kok = empty("koy_kok", (0, 0, 0))
+    key(koy_kok, "location", 1, (0, 0, H_TEPE * 0.04))
+    key(koy_kok, "location", fa, (0, 0, H_TEPE * 0.04))
+    key(koy_kok, "location", fb, (0, 0, H_TEPE))
+    katman_zaman = [F(0.3), F(T[1] + 1.6), F(T[1] + 3.4), F(T[1] + 5.2)]
+    for k, f in enumerate(katman_zaman):
+        kat = koy_katmani(M, k, 0.0)
+        kat.parent = koy_kok
+        bitis = katman_zaman[k + 1] + 4 if k + 1 < len(katman_zaman) else F(T[2] + 2.0)
+        gorunur(kat, f, bitis)
+
+    # 2) Gözetleme kulesi
     kule = burc("kule", (0, 0, H_TEPE), 0.42, 1.5, M)
-    rise(kule, F(T[1] + 2.4), depth=1.6, dur=12)
+    rise(kule, F(T[2] + 2.4), depth=1.6, dur=12)
 
-    # 2) Surlar (cümle 3) — yükselerek gelir
+    # 3) Surlar
     sur, sur_parca = sur_halkasi(M, 1.55, H_TEPE, 0.55, 0.22, bosluk=[-math.pi / 2])
-    rise(sur, F(T[2] + 2.4), depth=0.7, dur=14)
+    rise(sur, F(T[3] + 1.8), depth=0.7, dur=14)
 
-    # 3) Hendek + köprü (cümle 4)
+    # 4) Hendek + köprü
     h, kopru = hendek(M)
-    pop(h, F(T[3] + 2.4), dur=10)
-    pop(kopru, F(T[3] + 3.2), dur=8)
+    pop(h, F(T[4] + 2.6), dur=10)
+    pop(kopru, F(T[4] + 3.4), dur=8)
 
-    # 4) Sarnıç (cümle 5) — kesitte belirir
+    # 5) Sarnıç (kesitte)
     s = sarnic(M)
-    pop(s, F(T[4] + 2.6), dur=10)
+    pop(s, F(T[5] + 2.4), dur=10)
 
-    # 5) Yüzyıllar: her medeniyet bir burç ekler (cümle 6)
+    # 6) Bizans: 12 burç; Selçuklu: onarım (surlar 'nefes alır'); Memlük: kapı + burç taçları güçlenir
     burclar = []
-    acilar = [math.radians(a) for a in (20, 75, 130, 200, 250, 320)]
-    for i, a in enumerate(acilar):
-        b = burc(f"burc_{i}", (math.cos(a) * 1.58, math.sin(a) * 1.58, H_TEPE), 0.26, 0.85, M)
-        pop(b, F(T[5] + 1.2 + i * 0.55), dur=8)
+    for i in range(12):
+        a = math.radians(-90 + 15 + i * 30)
+        b = burc(f"burc_{i}", (math.cos(a) * 1.58, math.sin(a) * 1.58, H_TEPE), 0.24, 0.85, M)
+        pop(b, F(T[6] + 0.6 + i * 0.16), dur=7)
         burclar.append(b)
-    # Kale kapısı (iki burç arası kemer)
+    f_sel = F(T[6] + 2.6)
+    key(sur, "scale", f_sel, (1, 1, 1))
+    key(sur, "scale", f_sel + 5, (1.04, 1.04, 1.12))
+    key(sur, "scale", f_sel + 11, (1, 1, 1))
     kapi = box("kapi", (0, -1.62, H_TEPE + 0.32), (0.5, 0.3, 0.64), M["tas_koyu"], bev=0.02)
-    pop(kapi, F(T[5] + 0.6), dur=8)
+    pop(kapi, F(T[6] + 4.3), dur=8)
 
-    # 6) 1920 kuşatması: etrafta top atışları (cümle 7)
-    for i, a in enumerate((200, 250, 300, 340, 160)):
+    # 7) 1920 kuşatması: top atışları
+    for i, a in enumerate((200, 250, 300, 340, 160, 225)):
         r = R_TEPE + 1.8
-        duman(M, (math.cos(math.radians(a)) * r, math.sin(math.radians(a)) * r, 0.15), F(T[6] + 1.0 + i * 0.6))
+        duman(M, (math.cos(math.radians(a)) * r, math.sin(math.radians(a)) * r, 0.15), F(T[7] + 1.2 + i * 0.55))
 
-    # 7) Gazi: kulenin tepesinde bayrak (cümle 8)
+    # 8) Gazi: bayrak
     bk = bayrak(M, (0, 0, H_TEPE + 1.72))
-    pop(bk, F(T[7] + 2.2), dur=10)
+    pop(bk, F(T[8] + 2.4), dur=10)
 
-    # 8) Deprem (cümle 9): iki burç ve birkaç sur parçası yamaçtan aşağı devrilir, 10. cümlede geri gelir
-    dusenler = [burclar[3], burclar[4]] + [sur_parca[i] for i in (17, 18, 19, 21)]
-    f_dep = F(T[8] + 1.4)
-    f_geri = F(T[9] + 1.0)
+    # 9) Deprem → 10) taşlar yerine geri
+    dusenler = [burclar[i] for i in (0, 1, 11)] + [sur_parca[i] for i in (18, 19, 22, 23)]
+    f_dep = F(T[9] + 2.6)
+    f_geri = F(T[10] + 1.6)
     for i, o in enumerate(dusenler):
         loc0 = o.location.copy()
         rot0 = o.rotation_euler.copy()
-        dis = Vector((loc0.x, loc0.y, 0)).normalized() if loc0.length > 0.1 else Vector((-0.7, -0.7, 0))
-        if o.parent is not None and o.parent.name == "sur":
-            # sur parçası: dünya koordinatı halka yarıçapında
-            dis = Vector((o.matrix_world.translation.x, o.matrix_world.translation.y, 0)).normalized()
-        hedef = loc0 + dis * 1.2 + Vector((0, 0, -0.9))
+        w = o.matrix_world.translation
+        dis = Vector((w.x, w.y, 0)).normalized()
+        hedef = loc0 + dis * 1.25 + Vector((0, 0, -0.95))
+        dus = (rot0.x + dis.y * 1.3, rot0.y - dis.x * 1.3, rot0.z + 0.4)
         key(o, "location", f_dep + i, tuple(loc0))
         key(o, "rotation_euler", f_dep + i, tuple(rot0))
         key(o, "location", f_dep + 14 + i, tuple(hedef))
-        key(o, "rotation_euler", f_dep + 14 + i, (rot0.x + dis.y * 1.3, rot0.y - dis.x * 1.3, rot0.z + 0.4))
-        key(o, "location", f_geri + i * 2, tuple(hedef))
-        key(o, "rotation_euler", f_geri + i * 2, (rot0.x + dis.y * 1.3, rot0.y - dis.x * 1.3, rot0.z + 0.4))
-        key(o, "location", f_geri + 12 + i * 2, tuple(loc0))
-        key(o, "rotation_euler", f_geri + 12 + i * 2, tuple(rot0))
-    # Taşlara numara: geri gelirken kısa parlama yok; sade tutuyoruz.
+        key(o, "rotation_euler", f_dep + 14 + i, dus)
+        key(o, "location", f_geri + i * 3, tuple(hedef))
+        key(o, "rotation_euler", f_geri + i * 3, dus)
+        key(o, "location", f_geri + 12 + i * 3, tuple(loc0))
+        key(o, "rotation_euler", f_geri + 12 + i * 3, tuple(rot0))
 
-    # 9) Bakırcı çarşısı + manzara masası + gün batımı (cümle 11)
+    # 11) Çarşı + manzara masası + gün batımı
     c, dukkanlar = carsi(M)
     for i, d in enumerate(dukkanlar):
-        pop(d, F(T[10] + 0.6 + i * 0.35), dur=8)
+        pop(d, F(T[11] + 0.6 + i * 0.35), dur=8)
     masa, baklava = manzara_masasi(M)
-    pop(masa, F(T[10] + 4.6), dur=10)
-
-    # Işık: gün batımına (pembe-turuncu) geçiş
-    f_gb0, f_gb1 = F(T[10] + 2.0), F(T[10] + 5.0)
-    for f, en, rk, el in ((f_gb0, 4.0, (1.0, 0.96, 0.88), 35), (f_gb1, 3.0, (1.0, 0.55, 0.45), 6)):
+    pop(masa, F(T[11] + 4.6), dur=10)
+    f_gb0, f_gb1 = F(T[11] + 2.0), F(T[11] + 5.0)
+    for f, en, rk, el in ((f_gb0, 3.2, (1.0, 0.96, 0.88), 35), (f_gb1, 2.6, (1.0, 0.55, 0.45), 6)):
         gunes.data.energy = en
         gunes.data.keyframe_insert("energy", frame=f)
         gunes.data.color = rk
@@ -520,6 +568,8 @@ def build():
         except Exception:
             pass
 
+    import sehir
+    sehir.kur(M, T, F, R_TEPE, BLOK)
     kamera()
     deprem_sarsinti(f_dep)
 
@@ -545,20 +595,21 @@ def kamera():
 
     # (saniye, açı, uzaklık, yükseklik, hedef)
     plan = [
-        (0.0, -60, 15.0, 9.0, (0, 0, 0.6)),
-        (T[1], -75, 9.0, 5.5, (0, 0, 2.0)),        # kule
-        (T[2], -95, 10.0, 6.0, (0, 0, 1.8)),       # surlar
-        (T[3], -110, 12.0, 6.5, (0, -1.5, 0.5)),   # hendek
-        (T[4], -90, 13.5, 1.6, (0, -BLOK / 2 + 1.5, -0.2)),  # sarnıç (kesite önden bakış)
-        (T[5], -60, 11.0, 6.5, (0, 0, 1.8)),       # burçlar
-        (T[6], -30, 15.0, 7.0, (0, 0, 0.8)),       # kuşatma
-        (T[7], -70, 6.5, 4.6, (0, 0, 3.0)),        # bayrak
-        (T[8], -100, 12.0, 5.0, (0, 0, 1.0)),      # deprem
-        (T[9], -80, 10.0, 6.0, (0, 0, 1.6)),       # yeniden örme
-        (T[10], -50, 12.0, 4.0, (0, -3, 0.6)),     # çarşı
-        (T[10] + 4.2, -40, 7.5, 2.8, (2.4, -2.2, 0.5)),  # masa ve baklava
-        (T[11], -60, 17.0, 10.0, (0, 0, 0.8)),     # final geniş plan
-        (BITIS, -45, 18.0, 10.5, (0, 0, 0.8)),
+        (0.0, -60, 14.0, 8.0, (0, 0, 0.2)),           # düzlükte köy
+        (T[1], -70, 12.0, 5.5, (0, 0, 0.8)),          # höyük büyür
+        (T[2], -80, 9.0, 5.5, (0, 0, 2.0)),           # kule
+        (T[3], -95, 10.0, 6.0, (0, 0, 1.8)),          # surlar
+        (T[4], -110, 12.0, 6.5, (0, -1.5, 0.5)),      # hendek
+        (T[5], -90, 13.5, 1.6, (0, -BLOK / 2 + 1.5, -0.2)),  # sarnıç
+        (T[6], -60, 10.5, 6.5, (0, 0, 1.8)),          # 12 burç
+        (T[7], -30, 17.0, 8.5, (0, 0, 0.8)),          # kuşatma
+        (T[8], -70, 6.5, 4.6, (0, 0, 3.0)),           # bayrak
+        (T[9], -100, 12.0, 5.0, (0, 0, 1.0)),         # deprem
+        (T[10], -80, 10.0, 6.0, (0, 0, 1.6)),         # yeniden örme
+        (T[11], -60, 13.0, 5.0, (0, -3, 0.6)),        # çarşı
+        (T[11] + 4.2, -20, 6.5, 5.5, (4.3, -2.0, 0.3)),  # masa ve baklava
+        (T[12], -60, 21.0, 13.0, (0, 0, 0.8)),        # final geniş plan
+        (BITIS, -45, 22.0, 13.5, (0, 0, 0.8)),
     ]
     for i, (sn, aci, uz, yk, hd) in enumerate(plan):
         f = F(sn)
@@ -605,7 +656,7 @@ def setup_render(kalite, cikti):
     scn.render.resolution_percentage = 100
     scn.render.image_settings.file_format = "PNG"
     scn.view_settings.view_transform = "AgX"
-    scn.view_settings.exposure = -0.9
+    scn.view_settings.exposure = -0.6
     try:
         scn.view_settings.look = "AgX - Punchy"
     except Exception:

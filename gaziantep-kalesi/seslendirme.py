@@ -9,16 +9,17 @@ AYAR = {"stability": 0.5, "similarity_boost": 0.8, "style": 0.0, "speed": 1.0}
 KLASOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seslendirme")
 
 CUMLELER = [
-    "Eğer bu düzlükte bir tepeye çıkarsan, her yönü görürsün.",
-    "Ama düşman da seni görür. Sen de tepenin üstüne taştan bir gözetleme kulesi dikersin.",
-    "Ama kule yetmez, düşman tepeye tırmanır. Sen de etrafına kalın surlar örersin.",
-    "Ama surların dibine kadar gelirler. Sen de tepenin çevresine derin bir hendek kazarsın.",
+    "Eğer bu düzlüğe bir köy kurarsan, düşmana açık olursun.",
+    "Sen de evini eski evin üstüne yaparsın. Beş bin yıl boyunca her köy bir öncekinin üstüne kurulur. Düzlükte kendine bir tepe yapmış olursun.",
+    "Ama tepeyi düşman da görür. Sen de tepeye taştan bir gözetleme kulesi dikersin.",
+    "Ama kule yetmez. Sen de etrafına kalın surlar örersin.",
+    "Ama düşman surların dibine kadar gelir. Sen de tepenin çevresine derin bir hendek kazarsın.",
     "Ama kuşatma aylarca sürer, su biter. Sen de kayanın içine sarnıçlar oyarsın.",
-    "Yüzyıllar geçer. Bizans, Selçuklu, Memlük... Her gelen bir kule ekler.",
-    "Bin dokuz yüz yirmi. Şehir kuşatılır. Halk on ay boyunca direnir.",
+    "Bizans gelir, surlara on iki burç diker. Selçuklu gelir, onarır. Memlük gelir, yeniden güçlendirir.",
+    "Bin dokuz yüz yirmi. Şehir kuşatılır. Halk açlığa rağmen on ay direnir.",
     "Sen de şehrin adının önüne bir unvan eklersin: Gazi.",
-    "Ama bir kış gecesi yer sallanır. Burçlar yamaçtan aşağı yıkılır.",
-    "Sen de taşları tek tek numaralar, yeniden örersin.",
+    "Ama iki bin yirmi üçte, bir kış sabahı yer sallanır. Burçlar yamaçtan aşağı yuvarlanır.",
+    "Sen de düşen taşları tek tek numaralar, aynı yerlerine geri örersin.",
     "Son olarak kalenin dibine bir bakırcı çarşısı, havaya fıstık kokusu ve tam manzarayı izlerken tabağına konan bir dilim baklava eklersin.",
     "Tebrikler, Gaziantep Kalesi'ni yaptın.",
 ]
